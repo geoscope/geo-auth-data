@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BLB.Domain.Net.Interfaces;
-using BLB.Domain.Net.Models;
-using BLB.Shared.Net.Interfaces;
-using BLB.Shared.Net.Models;
 using Dapper;
+using geo_auth_shared.Models;
+using geo_auth_data.Interfaces;
+using geo_auth_data.models.domain;
+using geo_auth_shared.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
-namespace BLB.Domain.Net.Repositories
+namespace geo_auth_data.Repositories
 {
     public class UserRepository : IUserRepository
     {
@@ -24,7 +24,7 @@ namespace BLB.Domain.Net.Repositories
             if (appSettings == null)
                 throw new ArgumentNullException(nameof(appSettings));
 
-            connectionString = configuration.GetConnectionString("BLBConnectionString");
+            connectionString = configuration.GetConnectionString("AuthDatabase");
             this.appSettings = appSettings.Value;
             this.securityHelper = securityHelper;
         }
@@ -34,14 +34,14 @@ namespace BLB.Domain.Net.Repositories
             throw new NotImplementedException();
         }
 
-        public async Task<User> AuthenticateUserAsync(string username, string password)
+        public async Task<User> AuthenticateUserAsync(long ownerId, string username, string password)
         {
             // Get the user record - for the salt
-            var user = await GetByUserNameAsync(username).ConfigureAwait(false);
+            var user = await GetByUserNameAsync(ownerId, username).ConfigureAwait(false);
 
             if (user != null)
             {
-                var hashedPassword = securityHelper.HashPassword(password, appSettings.SystemSalt, user.UserSalt);
+                var hashedPassword = securityHelper.HashPassword(password, appSettings.SystemPasswordSalt, user.PasswordSalt);
 
                 var sql = "SELECT * FROM \"Users\" u WHERE u.\"UserName\"=@username AND u.\"Password\"=@hashedPassword AND u.\"IsDeleted\"=false AND u.\"IsEnabled\"=true;";
 
@@ -66,7 +66,12 @@ namespace BLB.Domain.Net.Repositories
             throw new NotImplementedException();
         }
 
-        public async Task<User> GetByUserNameAsync(string username)
+        public Task<IEnumerable<User>> GetAllAsync(long ownerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<User> GetByUserNameAsync(long ownerId, string username)
         {
             var sql = "SELECT * FROM \"Users\" u WHERE u.\"UserName\"=@username AND u.\"IsDeleted\"=false AND u.\"IsEnabled\"=true;";
 
@@ -74,7 +79,7 @@ namespace BLB.Domain.Net.Repositories
             {
                 var user = await conn.QueryAsync<User>(sql, new { username }).ConfigureAwait(false);
 
-                return user.First();
+                return user.FirstOrDefault();
             }
         }
 
