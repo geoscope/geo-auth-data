@@ -43,11 +43,11 @@ namespace geo_auth_data.Repositories
             {
                 var hashedPassword = securityHelper.HashPassword(password, appSettings.SystemPasswordSalt, user.PasswordSalt);
 
-                var sql = "SELECT * FROM \"Users\" u WHERE u.\"UserName\"=@username AND u.\"Password\"=@hashedPassword AND u.\"IsDeleted\"=false AND u.\"IsEnabled\"=true;";
+                var sql = "SELECT * FROM \"Users\" u WHERE u.\"UserName\"=@username AND u.\"Password\"=@hashedPassword AND u.\"OwnerId\"=@ownerId AND u.\"IsDeleted\"=false AND u.\"IsEnabled\"=true;";
 
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    var authenticatedUser = await conn.QueryAsync<User>(sql, new { username, hashedPassword }).ConfigureAwait(false);
+                    var authenticatedUser = await conn.QueryAsync<User>(sql, new { username, hashedPassword, ownerId }).ConfigureAwait(false);
 
                     return authenticatedUser.FirstOrDefault();
                 }
